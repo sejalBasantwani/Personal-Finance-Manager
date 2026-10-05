@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-secondary bg-opacity-10">
+    <div class="container my-5">
+        <div class="card shadow-sm border-0 rounded-4 p-4 p-lg-5">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-start mb-4">
+                <div class="bg-primary bg-gradient rounded-3 p-3 fs-2">
+                    💰
+                </div>
+                <div class="text-secondary fw-medium">Home</div>
+            </div>
+
+            <!-- Total Spent Section -->
+            <div class="mb-4">
+                <div class="text-success fw-medium mb-2">Total Spent</div>
+                <div class="display-1 fw-bold text-success" id="totalSpent">1500</div>
+            </div>
+
+            <!-- Add Expense Button -->
+            <div class="text-end mb-4">
+                <button class="btn btn-outline-primary btn-lg fw-medium px-4" data-bs-toggle="modal" data-bs-target="#addExpenseModal">
+                    Add Expense
+                </button>
+            </div>
+
+            <!-- Expense Table -->
+            <div class="border rounded-3 overflow-hidden">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col" class="fw-semibold text-secondary py-3">#</th>
+                            <th scope="col" class="fw-semibold text-secondary py-3">Description</th>
+                            <th scope="col" class="fw-semibold text-secondary py-3">Date</th>
+                            <th scope="col" class="fw-semibold text-secondary py-3">Spent Amount</th>
+                            <th scope="col" class="fw-semibold text-secondary py-3">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expenseTableBody">
+                        <!-- Expenses will be added here dynamically -->
+                    </tbody>
+                </table>
+                <div id="emptyMessage" class="text-center text-secondary py-5">
+                    No expenses yet. Click "Add Expense" to get started.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Expense Modal -->
+    <div class="modal fade" id="addExpenseModal" tabindex="-1" aria-labelledby="addExpenseModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-semibold" id="addExpenseModalLabel">Add New Expense</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="expenseForm">
+                        <div class="mb-3">
+                            <label for="expenseDescription" class="form-label fw-medium">Description</label>
+                            <input type="text" class="form-control" id="expenseDescription" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="expenseDate" class="form-label fw-medium">Date</label>
+                            <input type="date" class="form-control" id="expenseDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="expenseAmount" class="form-label fw-medium">Amount</label>
+                            <input type="number" class="form-control" id="expenseAmount" step="0.01" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="saveExpenseBtn">Save Expense</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <!-- Popper.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/2.11.8/umd/popper.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            let expenses = [];
+            let expenseId = 1;
+
+            // Set today's date as default
+            $('#expenseDate').val(new Date().toISOString().split('T')[0]);
+
+            // Save Expense
+            $('#saveExpenseBtn').click(function() {
+                if ($('#expenseForm')[0].checkValidity()) {
+                    const expense = {
+                        id: expenseId++,
+                        description: $('#expenseDescription').val(),
+                        date: $('#expenseDate').val(),
+                        amount: parseFloat($('#expenseAmount').val())
+                    };
+
+                    expenses.push(expense);
+                    addExpenseToTable(expense);
+                    updateTotal();
+                    
+                    // Reset form and close modal
+                    $('#expenseForm')[0].reset();
+                    $('#expenseDate').val(new Date().toISOString().split('T')[0]);
+                    bootstrap.Modal.getInstance($('#addExpenseModal')).hide();
+                } else {
+                    $('#expenseForm')[0].reportValidity();
+                }
+            });
+
+            // Add expense to table
+            function addExpenseToTable(expense) {
+                $('#emptyMessage').hide();
+                const row = `
+                    <tr data-id="${expense.id}">
+                        <td class="py-3">${expense.id}</td>
+                        <td class="py-3">${expense.description}</td>
+                        <td class="py-3">${formatDate(expense.date)}</td>
+                        <td class="py-3">${expense.amount.toFixed(2)}</td>
+                        <td class="py-3">
+                            <button class="btn btn-sm btn-danger delete-btn" data-id="${expense.id}">Delete</button>
+                        </td>
+                    </tr>
+                `;
+                $('#expenseTableBody').append(row);
+            }
+
+            // Delete expense
+            $(document).on('click', '.delete-btn', function() {
+                const id = $(this).data('id');
+                expenses = expenses.filter(exp => exp.id !== id);
+                $(`tr[data-id="${id}"]`).remove();
+                updateTotal();
+                
+                if (expenses.length === 0) {
+                    $('#emptyMessage').show();
+                }
+            });
+
+            // Update total
+            function updateTotal() {
+                const total = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+                $('#totalSpent').text(total.toFixed(0));
+            }
+
+            // Format date
+            function formatDate(dateStr) {
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                });
+            }
+        });
+    </script>
+</body>
+</html>
